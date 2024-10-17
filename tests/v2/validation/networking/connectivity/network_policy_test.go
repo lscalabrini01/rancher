@@ -4,6 +4,9 @@ package connectivity
 
 import (
 	"errors"
+	"net/url"
+	"testing"
+
 	"github.com/rancher/rancher/tests/v2/actions/namespaces"
 	"github.com/rancher/rancher/tests/v2/actions/provisioninginput"
 	"github.com/rancher/rancher/tests/v2/actions/workloads"
@@ -16,8 +19,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/ssh"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/url"
-	"testing"
 
 	"github.com/rancher/shepherd/clients/rancher"
 	"github.com/rancher/shepherd/pkg/session"
@@ -37,9 +38,6 @@ type NetworkPolicyTestSuite struct {
 
 const (
 	nodeRole = "control-plane"
-	// Ping once
-	pingCmd        = "ping -c 1"
-	successfulPing = "0% packet loss"
 )
 
 func (n *NetworkPolicyTestSuite) TearDownSuite() {

@@ -1,16 +1,26 @@
 package connectivity
 
 import (
+	"errors"
+
+	"github.com/rancher/shepherd/clients/rancher"
+	v1 "github.com/rancher/shepherd/clients/rancher/v1"
+	"github.com/rancher/shepherd/extensions/clusters"
+	"github.com/rancher/shepherd/extensions/sshkeys"
 	"github.com/rancher/shepherd/extensions/workloads"
 	"github.com/rancher/shepherd/pkg/namegenerator"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
 	corev1 "k8s.io/api/core/v1"
 )
 
 const (
 	pingPodProjectName = "ping-project"
-
-	containerName  = "test1"
-	containerImage = "ranchertest/mytestcontainer"
+	containerName      = "test1"
+	containerImage     = "ranchertest/mytestcontainer"
+	//Ping once
+	pingCmd        = "ping -c 1"
+	successfulPing = "0% packet loss"
 )
 
 type resourceNames struct {
@@ -63,4 +73,30 @@ func newPodTemplateWithTestContainer() corev1.PodTemplateSpec {
 func newTestContainerMinimal() corev1.Container {
 	pullPolicy := corev1.PullAlways
 	return workloads.NewContainer(containerName, containerImage, pullPolicy, nil, nil, nil, nil, nil)
+}
+
+func pingCommand(client *rancher.Client, clusterName string, namespace string, podIP string, machine v1.SteveAPIObject) (string, error) {
+	_, stevecluster, err := clusters.GetProvisioningClusterByName(client, clusterName, namespace)
+	if err != nil {
+		return "", err
+	}
+
+	sshUser, err := sshkeys.GetSSHUser(client, stevecluster)
+	if err != nil {
+		return "", err
+	}
+
+	sshNode, err := sshkeys.GetSSHNodeFromMachine(client, sshUser, &machine)
+	if err != nil {
+		return "", err
+	}
+
+	pingExecCmd := pingCmd + " " + podIP
+	excmdLog, err := sshNode.ExecuteCommand(pingExecCmd)
+	if err != nil && !errors.Is(err, &ssh.ExitMissingError{}) {
+		return pingExecCmd, err
+	}
+
+	logrus.Infof("Log of the ping command {%v}", excmdLog)
+	return pingExecCmd, nil
 }
